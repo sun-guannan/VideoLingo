@@ -115,7 +115,7 @@ def download_and_extract_ffmpeg():
     else:
         console.print("[red]Failed to download FFmpeg and FFprobe[/red]")
 
-def init_config(api_key, base_url, whisper_method, language):
+def init_config(api_key, base_url, whisper_method, language, model):
     """Initialize the config.py file with the specified API key and base URL."""
     if not os.path.exists("config.py"):
         # Copy config.py from config.example.py
@@ -128,10 +128,10 @@ def init_config(api_key, base_url, whisper_method, language):
 
         # replace config item
         config_content = config_content.replace("API_KEY = 'sk-xxx'", f"API_KEY = '{api_key}'")
-        config_content = config_content.replace("BASE_URL = 'https://api.deepseek.com'", f"BASE_URL = '{base_url}'")
+        config_content = config_content.replace("BASE_URL = 'https://api.deepbricks.ai'", f"BASE_URL = '{base_url}'")
         config_content = config_content.replace("WHISPER_METHOD = 'whisperxapi'", f"WHISPER_METHOD = '{whisper_method}'")
-        config_content = config_content.replace("cloud = 1 if sys.platform.startswith('linux') else 0", "cloud = 0")
         config_content = config_content.replace("DISPLAY_LANGUAGE = 'auto'", f"DISPLAY_LANGUAGE = '{language}'")
+        config_content = config_content.replace("MODEL = ['claude-3-5-sonnet']", f"MODEL = ['{model}']")
 
         # write config.py
         with open("config.py", "w", encoding="utf-8") as file:
@@ -161,19 +161,21 @@ def main():
     install_package("requests")
 
 
-    # get API_KEY, BASE_URL, DISPLAY_LANGUAGE, WHISPER_METHOD from Env
+    # get params from Env
     api_key = os.getenv('API_KEY', 'xxx')
     base_url = os.getenv('BASE_URL', 'https://api.deepseek.com')
     language = os.getenv('DISPLAY_LANGUAGE', 'auto')
+    model = os.getenv('MODEL', 'claude-3-5-sonnet')
+    is_docker = os.getenv('IS_DOCKER_RUN', 'false')
 
-    # 用户选择 Whisper 模型
+    # Whisper_Method
     whisper_method = os.getenv('WHISPER_METHOD', None)
 
     # Initialize config.py file
     if whisper_method is None:
-        init_config(api_key, base_url, 'whisperX', language)
+        init_config(api_key, base_url, 'whisperX', language, model)
     else:
-        init_config(api_key, base_url, whisper_method, language)
+        init_config(api_key, base_url, whisper_method, language, model)
 
     if whisper_method is not None:
         if whisper_method == 'whisper_timestamped':
@@ -199,17 +201,19 @@ def main():
         choice = console.input("Please enter the option number (1, 2, or 3): ")
 
     # Install PyTorch
-    # 判断操作系统并选择安装合适版本的 PyTorch
-    if platform.system() == 'Darwin':  # macOS不支持Nvidia CUDA
-        console.print(Panel("For MacOS, installing CPU version of PyTorch...", style="cyan"))
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "torch", "torchaudio"])
-    else:  # Linux/Windows，有可能支持 CUDA
-        if choice in ['1', '2']:
-            console.print(Panel("Installing PyTorch with CUDA support...", style="cyan"))
-            subprocess.check_call(["conda", "install", "pytorch==2.0.0", "torchaudio==2.0.0", "pytorch-cuda=11.8", "-c", "pytorch", "-c", "nvidia", "-y"])
-        elif choice == '3':
-            console.print(Panel("Installing CPU version of PyTorch...", style="cyan"))
+    if is_docker:  # pytorch already installed by docker, do not need to reinstall
+        console.print(Panel("Running in Docker", style="cyan"))
+    else: # install manual
+        if platform.system() == 'Darwin':  # macOS do not support Nvidia CUDA
+            console.print(Panel("For MacOS, installing CPU version of PyTorch...", style="cyan"))
             subprocess.check_call([sys.executable, "-m", "pip", "install", "torch", "torchaudio"])
+        else:  # Linux/Windows
+            if choice in ['1', '2']:
+                console.print(Panel("Installing PyTorch with CUDA support...", style="cyan"))
+                subprocess.check_call(["conda", "install", "pytorch==2.0.0", "torchaudio==2.0.0", "pytorch-cuda=11.8", "-c", "pytorch", "-c", "nvidia", "-y"])
+            elif choice == '3':
+                console.print(Panel("Installing CPU version of PyTorch...", style="cyan"))
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "torch", "torchaudio"])
 
     # Install other dependencies
     install_requirements()
@@ -218,7 +222,8 @@ def main():
     install_whisper_model(choice)
 
     # Download and extract FFmpeg
-    download_and_extract_ffmpeg()
+    if not is_docker:  # ffmpeg image already installed by docker, do not need to reinstall
+        download_and_extract_ffmpeg()
     
     console.print(Panel.fit("All installation steps are completed!", style="bold green"))
     console.print("Please use the following command to start Streamlit:")
