@@ -3,7 +3,7 @@ name: Build and Push Docker Image
 on:
   push:
     branches:
-      - bugfix/mac-install-error  # 在推送到bugfix/mac-install-error分支时触发
+      - feature/docker-build  # 在推送到feature/docker-build分支时触发
 
 jobs:
   build:
