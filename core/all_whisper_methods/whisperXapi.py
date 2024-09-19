@@ -11,48 +11,53 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 def convert_video_to_audio(input_file: str) -> str:
     os.makedirs('output/audio', exist_ok=True)
     audio_file = 'output/audio/raw_full_audio'
+
+    if os.path.exists(f'{audio_file}.wav'):
+        return f'{audio_file}.wav'
+    if os.path.exists(f'{audio_file}.flac'):
+        return f'{audio_file}.flac'
+
     audio_file_with_format = f'{audio_file}.wav'
 
-    if not os.path.exists(f'{audio_file}.wav'):
+    ffmpeg_cmd = [
+        'ffmpeg',
+        '-i', input_file,
+        '-vn',
+        '-acodec', 'libmp3lame',
+        '-ar', '16000',
+        '-b:a', '64k',
+        f'{audio_file}.wav'
+    ]
+    try:
+        print(f"🎬➡️🎵 Converting to audio with libmp3lame ......")
+        subprocess.run(ffmpeg_cmd, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        print(f"🎬➡️🎵 Converted <{input_file}> to <{f'{audio_file}.wav'}> with libmp3lame\n")
+        audio_file_with_format = f'{audio_file}.wav'
+
+    except subprocess.CalledProcessError as e:
+        print("❌ libmp3lame failed. Retrying with aac ......")
+        print(f"Error output: {e.stderr.decode()}")
+
+        # 有时候会遇到ffmpeg不含libmp3lame解码器的错误，使用内置 flac无损编码 兜底进行音频转换的 fallback ffmpeg 命令
         ffmpeg_cmd = [
             'ffmpeg',
             '-i', input_file,
             '-vn',
-            '-acodec', 'libmp3lame',
+            '-acodec', 'flac',
             '-ar', '16000',
             '-b:a', '64k',
-            f'{audio_file}.wav'
+            f'{audio_file}.flac'
         ]
+
         try:
-            print(f"🎬➡️🎵 Converting to audio with libmp3lame ......")
             subprocess.run(ffmpeg_cmd, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            print(f"🎬➡️🎵 Converted <{input_file}> to <{f'{audio_file}.wav'}> with libmp3lame\n")
-            audio_file_with_format = f'{audio_file}.wav'
+            print(f"🎬➡️🎵 Converted <{input_file}> to <{f'{audio_file}.flac'}> with aac\n")
+            audio_file_with_format = f'{audio_file}.flac'
 
         except subprocess.CalledProcessError as e:
-            print("❌ libmp3lame failed. Retrying with aac ......")
+            print(f"❌ Failed to convert <{input_file}> to <{f'{audio_file}.flac'}> with both libmp3lame and aac.")
             print(f"Error output: {e.stderr.decode()}")
-
-            # 有时候会遇到ffmpeg不含libmp3lame解码器的错误，使用内置 flac无损编码 兜底进行音频转换的 fallback ffmpeg 命令
-            ffmpeg_cmd = [
-                'ffmpeg',
-                '-i', input_file,
-                '-vn',
-                '-acodec', 'flac',
-                '-ar', '16000',
-                '-b:a', '64k',
-                f'{audio_file}.flac'
-            ]
-
-            try:
-                subprocess.run(ffmpeg_cmd, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                print(f"🎬➡️🎵 Converted <{input_file}> to <{f'{audio_file}.flac'}> with aac\n")
-                audio_file_with_format = f'{audio_file}.flac'
-
-            except subprocess.CalledProcessError as e:
-                print(f"❌ Failed to convert <{input_file}> to <{f'{audio_file}.flac'}> with both libmp3lame and aac.")
-                print(f"Error output: {e.stderr.decode()}")
-                raise
+            raise
 
     return audio_file_with_format
 
