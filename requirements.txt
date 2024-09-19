@@ -12,6 +12,7 @@ librosa
 json-repair
 resampy
 streamlit
+rich
 
 # for whisperX api
 replicate

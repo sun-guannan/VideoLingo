@@ -115,12 +115,29 @@ def download_and_extract_ffmpeg():
     else:
         console.print("[red]Failed to download FFmpeg and FFprobe[/red]")
 
-def init_config():
+def init_config(api_key, base_url, whisper_method, language):
     """Initialize the config.py file with the specified API key and base URL."""
     if not os.path.exists("config.py"):
         # Copy config.py from config.example.py
         shutil.copy("config.example.py", "config.py")
         console.print("[green]config.py file has been created. Please fill in the API key and base URL in the config.py file.[/green]")
+
+        # read config.py
+        with open("config.py", "r", encoding="utf-8") as file:
+            config_content = file.read()
+
+        # replace config item
+        config_content = config_content.replace("API_KEY = 'sk-xxx'", f"API_KEY = '{api_key}'")
+        config_content = config_content.replace("BASE_URL = 'https://api.deepseek.com'", f"BASE_URL = '{base_url}'")
+        config_content = config_content.replace("WHISPER_METHOD = 'whisperxapi'", f"WHISPER_METHOD = '{whisper_method}'")
+        config_content = config_content.replace("cloud = 1 if sys.platform.startswith('linux') else 0", "cloud = 0")
+        config_content = config_content.replace("DISPLAY_LANGUAGE = 'auto'", f"DISPLAY_LANGUAGE = '{language}'")
+
+        # write config.py
+        with open("config.py", "w", encoding="utf-8") as file:
+            file.write(config_content)
+
+        console.print("[yellow]config.py file update finish.[/yellow]")
     else:
         console.print("[yellow]config.py file already exists.[/yellow]")
 
@@ -139,33 +156,61 @@ def install_whisper_model(choice):
 def main():
     console.print(Panel.fit("Starting installation...", style="bold magenta"))
 
-    # Initialize config.py file
-    init_config()
-
     # Install requests
     console.print(Panel("Installing requests...", style="cyan"))
     install_package("requests")
-    
-    # User selects Whisper model
-    table = Table(title="Whisper Model Selection")
-    table.add_column("Option", style="cyan", no_wrap=True)
-    table.add_column("Model", style="magenta")
-    table.add_column("Description", style="green")
-    table.add_row("1", "whisper_timestamped", "")
-    table.add_row("2", "whisperX", "")
-    table.add_row("3", "whisperX_api", "(recommended)")
-    console.print(table)
-    console.print("If you're unsure about the differences between models, please see https://github.com/Huanshere/VideoLingo/blob/main/docs/install_locally_zh.md")
-    choice = console.input("Please enter the option number (1, 2, or 3): ")
+
+
+    # get API_KEY, BASE_URL, DISPLAY_LANGUAGE, WHISPER_METHOD from Env
+    api_key = os.getenv('API_KEY', 'xxx')
+    base_url = os.getenv('BASE_URL', 'https://api.deepseek.com')
+    language = os.getenv('DISPLAY_LANGUAGE', 'auto')
+
+    # 用户选择 Whisper 模型
+    whisper_method = os.getenv('WHISPER_METHOD', None)
+
+    # Initialize config.py file
+    if whisper_method is None:
+        init_config(api_key, base_url, 'whisperX', language)
+    else:
+        init_config(api_key, base_url, whisper_method, language)
+
+    if whisper_method is not None:
+        if whisper_method == 'whisper_timestamped':
+            choice = '1'
+        elif whisper_method == 'whisperX':
+            choice = '2'
+        elif whisper_method == 'whisperX_api':
+            choice = '3'
+        else:
+            console.print(f"[red]Error: Invalid WHISPER_METHOD value '{whisper_method}'[/red]")
+            choice = None
+    else:
+        # User selects Whisper model
+        table = Table(title="Whisper Model Selection")
+        table.add_column("Option", style="cyan", no_wrap=True)
+        table.add_column("Model", style="magenta")
+        table.add_column("Description", style="green")
+        table.add_row("1", "whisper_timestamped", "")
+        table.add_row("2", "whisperX", "")
+        table.add_row("3", "whisperX_api", "(recommended)")
+        console.print(table)
+        console.print("If you're unsure about the differences between models, please see https://github.com/Huanshere/VideoLingo/blob/main/docs/install_locally_zh.md")
+        choice = console.input("Please enter the option number (1, 2, or 3): ")
 
     # Install PyTorch
-    if choice in ['1', '2']:
-        console.print(Panel("Installing PyTorch with CUDA support...", style="cyan"))
-        subprocess.check_call(["conda", "install", "pytorch==2.0.0", "torchaudio==2.0.0", "pytorch-cuda=11.8", "-c", "pytorch", "-c", "nvidia", "-y"])
-    elif choice == '3':
-        console.print(Panel("Installing CPU version of PyTorch...", style="cyan"))
+    # 判断操作系统并选择安装合适版本的 PyTorch
+    if platform.system() == 'Darwin':  # macOS不支持Nvidia CUDA
+        console.print(Panel("For MacOS, installing CPU version of PyTorch...", style="cyan"))
         subprocess.check_call([sys.executable, "-m", "pip", "install", "torch", "torchaudio"])
-    
+    else:  # Linux/Windows，有可能支持 CUDA
+        if choice in ['1', '2']:
+            console.print(Panel("Installing PyTorch with CUDA support...", style="cyan"))
+            subprocess.check_call(["conda", "install", "pytorch==2.0.0", "torchaudio==2.0.0", "pytorch-cuda=11.8", "-c", "pytorch", "-c", "nvidia", "-y"])
+        elif choice == '3':
+            console.print(Panel("Installing CPU version of PyTorch...", style="cyan"))
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "torch", "torchaudio"])
+
     # Install other dependencies
     install_requirements()
 
