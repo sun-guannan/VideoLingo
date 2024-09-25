@@ -1,10 +1,10 @@
-
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from datetime import datetime
-import librosa
 import pandas as pd
 import subprocess
+from pydub import AudioSegment
+from rich import print as rprint
 
 def time_to_datetime(time_str):
     return datetime.strptime(time_str, '%H:%M:%S.%f')
@@ -13,68 +13,55 @@ def create_silence(duration, output_file):
     subprocess.run([
         'ffmpeg', '-f', 'lavfi', '-i', f'anullsrc=channel_layout=mono:sample_rate=32000:duration={duration}',
         '-acodec', 'pcm_s16le', '-y', output_file
-    ], check=True)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def merge_all_audio():
-    # 定义输入和输出路径
+    # Define input and output paths
     input_excel = 'output/audio/sovits_tasks.xlsx'
     output_audio = 'output/trans_vocal_total.wav'
         
     df = pd.read_excel(input_excel)
-    temp_file = r'output/audio/tmp/temp_file_list.txt' 
+    
+    # Get the sample rate of the first audio file
+    first_audio = f'output/audio/segs/{df.iloc[0]["number"]}.wav'
+    sample_rate = AudioSegment.from_wav(first_audio).frame_rate
 
-    with open(temp_file, 'w') as f:
-        prev_target_start_time = None
-        prev_actual_duration = 0
+    # Create an empty AudioSegment object
+    merged_audio = AudioSegment.silent(duration=0, frame_rate=sample_rate)
+
+    prev_target_start_time = None
+    prev_actual_duration = 0
+    
+    for index, row in df.iterrows():
+        number = row['number']
+        start_time = row['start_time']
+        input_audio = f'output/audio/segs/{number}.wav'
         
-        for index, row in df.iterrows():
-            number = row['number']
-            start_time = row['start_time']
-            input_audio = f'output/audio/{number}.wav'
-            
-            if not os.path.exists(input_audio):
-                print(f"警告: 文件 {input_audio} 不存在,跳过此文件。")
-                continue
-            
-            y, sr = librosa.load(input_audio)  
-            actual_duration = librosa.get_duration(y=y, sr=sr)
-            target_start_time = time_to_datetime(start_time)
-            
-            silence_duration = (target_start_time - datetime(1900, 1, 1)).total_seconds() if prev_target_start_time is None else (target_start_time - prev_target_start_time).total_seconds() - prev_actual_duration
-            
-            if silence_duration > 0:
-                silence_file = f'output/audio/tmp/silence_{index}.wav'
-                create_silence(silence_duration, silence_file) 
-                f.write(f"file '{os.path.abspath(silence_file)}'\n")
-            
-            f.write(f"file '{os.path.abspath(input_audio)}'\n")
-            
-            prev_target_start_time = target_start_time
-            prev_actual_duration = actual_duration
+        if not os.path.exists(input_audio):
+            rprint(f"[bold yellow]Warning: File {input_audio} does not exist, skipping this file.[/bold yellow]")
+            continue
+        
+        audio_segment = AudioSegment.from_wav(input_audio)
+        actual_duration = len(audio_segment) / 1000  # Convert to seconds
+        target_start_time = time_to_datetime(start_time)
+        
+        silence_duration = (target_start_time - datetime(1900, 1, 1)).total_seconds() if prev_target_start_time is None else (target_start_time - prev_target_start_time).total_seconds() - prev_actual_duration
+        
+        if silence_duration > 0:
+            silence = AudioSegment.silent(duration=int(silence_duration * 1000), frame_rate=sample_rate)
+            merged_audio += silence
+        
+        merged_audio += audio_segment
+        
+        prev_target_start_time = target_start_time
+        prev_actual_duration = actual_duration
 
-    ffmpeg_cmd = [    
-        'ffmpeg', '-f', 'concat', '-safe', '0', 
-        '-i', os.path.abspath(temp_file), '-c', 'copy', os.path.abspath(output_audio)
-    ]
-
-    if os.path.exists(output_audio):
-        os.remove(output_audio)
-
-    print("开始拼接音频文件...")
-    try:
-        subprocess.run(ffmpeg_cmd, check=True, stderr=subprocess.PIPE)
-        print(f"音频文件已成功拼接,输出文件: {output_audio}")  
-    except subprocess.CalledProcessError as e:
-        print(f"错误: FFmpeg命令执行失败。\n{e.stderr.decode()}")
-
-    os.remove(temp_file)
-    for file in os.listdir('output/audio/tmp'):
-        if file.startswith('silence_'):
-            os.remove(os.path.join('output/audio/tmp', file))  
-    print("临时文件已删除。")
+    # Export the merged audio
+    merged_audio.export(output_audio, format="wav")
+    rprint(f"[bold green]Audio file successfully merged, output file: {output_audio}[/bold green]")
 
 def merge_video_audio():
-    """将视频和音频合并,并减小视频音量"""
+    """Merge video and audio, and reduce video volume"""
     video_file = "output/output_video_with_subs.mp4"
     background_file = 'output/audio/background.wav'
     original_vocal = 'output/audio/original_vocal.wav'
@@ -82,21 +69,39 @@ def merge_video_audio():
     output_file = "output/output_video_with_audio.mp4"
 
     if os.path.exists(output_file):
-        print(f"{output_file} 文件已存在,跳过处理。")
+        rprint(f"[bold yellow]{output_file} already exists, skipping processing.[/bold yellow]")
+        return
+    
+    from config import RESOLUTION
+    if RESOLUTION == '0x0':
+        rprint("[bold yellow]Warning: A 0-second black video will be generated as a placeholder as Resolution is set to 0x0.[/bold yellow]")
+
+        # 确定是否是macOS
+        macOS = os.name == 'posix' and os.uname().sysname == 'Darwin'
+
+        if macOS:
+            subprocess.run(['ffmpeg', '-f', 'lavfi', '-i', 'color=c=black:s=1920x1080:d=0',
+                            '-c:v', 'libx264', '-t', '0', '-y', output_file],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.run(['ffmpeg', '-f', 'lavfi', '-i', 'color=c=black:s=1920x1080:d=0',
+                            '-c:v', 'libx264', '-t', '0', '-preset', 'ultrafast', '-y', output_file],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        rprint("[bold green]Placeholder video has been generated.[/bold green]")
         return
 
-    # 合并视频和音频
+    # Merge video and audio
     from config import ORIGINAL_VOLUME
     volumn = ORIGINAL_VOLUME
-    cmd = ['ffmpeg', '-i', video_file, '-i', background_file, '-i', original_vocal, '-i', audio_file, '-filter_complex', f'[1:a]volume=1[a1];[2:a]volume={volumn}[a2];[3:a]volume=1[a3];[a1][a2][a3]amix=inputs=3:duration=first:dropout_transition=3[a]', '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', output_file]
+    cmd = ['ffmpeg', '-y', '-i', video_file, '-i', background_file, '-i', original_vocal, '-i', audio_file, '-filter_complex', f'[1:a]volume=1[a1];[2:a]volume={volumn}[a2];[3:a]volume=1[a3];[a1][a2][a3]amix=inputs=3:duration=first:dropout_transition=3[a]', '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', output_file]
 
     try:
         subprocess.run(cmd, check=True)
-        print(f"视频和音频已成功合并到 {output_file}")
+        rprint(f"[bold green]Video and audio successfully merged into {output_file}[/bold green]")
     except subprocess.CalledProcessError as e:
-        print(f"合并视频和音频时出错: {e}")
+        rprint(f"[bold red]Error merging video and audio: {e}[/bold red]")
     
-    # 删除临时音频文件
+    # Delete temporary audio file
     if os.path.exists('tmp_audio.wav'):
         os.remove('tmp_audio.wav')
 

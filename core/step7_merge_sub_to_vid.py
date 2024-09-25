@@ -1,6 +1,8 @@
 import os, subprocess, time, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.step1_ytdlp import find_video_files
+from rich import print as rprint
+from rich.panel import Panel
 
 SRC_FONT_SIZE = 15
 TRANS_FONT_SIZE = 19
@@ -16,19 +18,28 @@ TRANS_OUTLINE_WIDTH = 1
 TRANS_BACK_COLOR = '&H33000000'
 
 def merge_subtitles_to_video():
-    from config import RESOLUTIOM
-    TARGET_WIDTH, TARGET_HEIGHT = RESOLUTIOM.split('x')
-    ## merge subtitles to video and save the output video
+    from config import RESOLUTION
+    TARGET_WIDTH, TARGET_HEIGHT = RESOLUTION.split('x')
     video_file = find_video_files()
+    output_video = "output/output_video_with_subs.mp4"
+    os.makedirs(os.path.dirname(output_video), exist_ok=True)
+
+    # Check resolution and video duration
+    if RESOLUTION == "0x0":
+        rprint(Panel("Warning: A 0-second black video will be generated as a placeholder as Resolution is set to 0x0.", title="Warning", border_style="yellow"))
+        # Suppress detailed output of ffmpeg command
+        subprocess.run(['ffmpeg', '-f', 'lavfi', '-i', 'color=c=black:s=1920x1080:d=0',
+                        '-c:v', 'libx264', '-t', '0', '-preset', 'ultrafast', '-y', output_video],
+                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print("Placeholder video has been generated.")
+        return
+
     en_srt = "output/src_subtitles.srt"
     trans_srt = "output/trans_subtitles.srt"
 
     if not os.path.exists(en_srt) or not os.path.exists(trans_srt):
         print("Subtitle files not found in the 'output' directory.")
         exit(1)
-
-    output_video = "output/output_video_with_subs.mp4"
-    os.makedirs(os.path.dirname(output_video), exist_ok=True)
 
     # 确定是否是macOS
     macOS = os.name == 'posix' and os.uname().sysname == 'Darwin'
@@ -45,12 +56,11 @@ def merge_subtitles_to_video():
             f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
             f"BackColour={TRANS_BACK_COLOR},Alignment=2,MarginV=25,BorderStyle=4'"
         ),
-        '-preset', 'veryfast', 
         '-y',
         output_video
     ]
 
-    # 根据是否是macOS添加不同的参数,macOS的ffmpeg不包含preset
+    # 根据是否是macOS添加不同的参数, macOS的ffmpeg不包含preset
     if not macOS:
         ffmpeg_cmd.insert(-2, '-preset')
         ffmpeg_cmd.insert(-2, 'veryfast')

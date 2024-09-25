@@ -1,4 +1,3 @@
-icecream
 requests
 pandas
 jupyter
@@ -17,31 +16,5 @@ rich
 # for whisperX api
 replicate
 
-##! gpt-sovits requirements
-# pydantic
-# soundfile
-# flash-attention
-# numpy==1.26.4
-# scipy
-# tensorboard
-# numba
-# pytorch-lightning
-# ffmpeg-python
-# onnxruntime
-# tqdm
-# funasr==1.0.0
-# cn2an
-# pypinyin
-# pyopenjtalk
-# g2p_en
-# modelscope==1.10.0
-# sentencepiece
-# transformers
-# chardet
-# psutil
-# jieba_fast
-# jieba
-# LangSegment>=0.3.1
-# wordsegment
-# srt
-# pyloudnorm
+# for azure tts
+azure-cognitiveservices-speech

@@ -1,0 +1,173 @@
+import pandas as pd
+import datetime
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import re
+from core.ask_gpt import ask_gpt
+from core.prompts_storage import get_subtitle_trim_prompt
+from rich import print as rprint
+from rich.panel import Panel
+from rich.console import Console
+
+console = Console()
+from config import MAX_SPEED_FACTOR, NORMAL_SPEED_FACTOR
+# TODO: 需要优化，目前只考虑了中英文标点符号，没有考虑其他语言的标点符号
+def check_len_then_trim(text, duration):
+    # Define speech speed: characters/second or words/second, punctuation/second
+    speed_zh_ja = 4 * MAX_SPEED_FACTOR * NORMAL_SPEED_FACTOR  # Chinese and Japanese characters per second
+    speed_en = speed_ru = speed_fr = speed_es = speed_it = speed_de = 4 * MAX_SPEED_FACTOR * NORMAL_SPEED_FACTOR   # Words per second for English, Russian, French, Spanish, Italian, German
+    speed_punctuation = 4 * MAX_SPEED_FACTOR * NORMAL_SPEED_FACTOR   # Punctuation marks per second
+    
+    # Count characters, words, and punctuation for each language
+    chinese_japanese_chars = len(re.findall(r'[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf\uf900-\ufaff\uff66-\uff9f]', text))
+    english_words = len(re.findall(r'\b[a-zA-Z]+\b', text))
+    russian_words = len(re.findall(r'\b[а-яА-Я]+\b', text))
+    french_words = len(re.findall(r'\b[a-zA-Zàâçéèêëîïôûùüÿñæœ]+\b', text))
+    spanish_words = len(re.findall(r'\b[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]+\b', text))
+    italian_words = len(re.findall(r'\b[a-zA-ZàèéìíîòóùúÀÈÉÌÍÎÒÓÙÚ]+\b', text))
+    german_words = len(re.findall(r'\b[a-zA-ZäöüßÄÖÜ]+\b', text))
+    punctuation_count = len(re.findall(r'[,.!?;:，。！？；：](?=.)', text))
+    
+    # Estimate duration for each language part and punctuation
+    chinese_japanese_duration = chinese_japanese_chars / speed_zh_ja
+    english_duration = english_words / speed_en
+    russian_duration = russian_words / speed_ru
+    french_duration = french_words / speed_fr
+    spanish_duration = spanish_words / speed_es
+    italian_duration = italian_words / speed_it
+    german_duration = german_words / speed_de
+    punctuation_duration = punctuation_count / speed_punctuation
+    
+    # Total estimated duration
+    estimated_duration = (chinese_japanese_duration + english_duration + russian_duration + 
+                          french_duration + spanish_duration + italian_duration + 
+                          german_duration + punctuation_duration)
+    
+    console.print(f"Subtitle info: Chinese/Japanese chars: {chinese_japanese_chars}, English words: {english_words}, "
+                  f"Russian words: {russian_words}, French words: {french_words}, "
+                  f"Spanish words: {spanish_words}, Italian words: {italian_words}, "
+                  f"German words: {german_words}, Punctuation marks: {punctuation_count}, "
+                  f"[bold green]Estimated reading duration: {estimated_duration:.2f} seconds[/bold green]")
+    
+    if estimated_duration > duration:
+        rprint(Panel(f"Estimated reading duration {estimated_duration:.2f} seconds exceeds given duration {duration:.2f} seconds, shortening...", title="Processing", border_style="yellow"))
+        original_text = text
+        prompt = get_subtitle_trim_prompt(text, duration)
+        response = ask_gpt(prompt, response_json=True, log_title='subtitle_trim')
+        shortened_text = response['trans_text_processed']
+        rprint(Panel(f"Subtitle before shortening: {original_text}\nSubtitle after shortening: {shortened_text}", title="Subtitle Shortening Result", border_style="green"))
+        return shortened_text
+    else:
+        return text
+
+def process_srt():
+    """Process srt file, generate audio tasks"""
+    output_dir = 'output/audio'
+    trans_subs = os.path.join(output_dir, 'trans_subs_for_audio.srt')
+
+    src_file_path = os.path.join(output_dir, 'src_subs_for_audio.srt')
+    
+    with open(trans_subs, 'r', encoding='utf-8') as file:
+        content = file.read()
+    
+    with open(src_file_path, 'r', encoding='utf-8') as src_file:
+        src_content = src_file.read()
+    
+    subtitles = []
+    src_subtitles = {}
+    
+    for block in src_content.strip().split('\n\n'):
+        lines = [line.strip() for line in block.split('\n') if line.strip()]
+        if len(lines) < 3:
+            continue
+        
+        number = int(lines[0])
+        src_text = ' '.join(lines[2:])
+        src_subtitles[number] = src_text
+    
+    for block in content.strip().split('\n\n'):
+        lines = [line.strip() for line in block.split('\n') if line.strip()]
+        if len(lines) < 3:
+            continue
+        
+        try:
+            number = int(lines[0])
+            start_time, end_time = lines[1].split(' --> ')
+            start_time = datetime.datetime.strptime(start_time, '%H:%M:%S,%f').time()
+            end_time = datetime.datetime.strptime(end_time, '%H:%M:%S,%f').time()
+            duration = (datetime.datetime.combine(datetime.date.today(), end_time) - 
+                        datetime.datetime.combine(datetime.date.today(), start_time)).total_seconds()
+            text = ' '.join(lines[2:])
+            # Remove content within parentheses (including English and Chinese parentheses)
+            text = re.sub(r'\([^)]*\)', '', text).strip()
+            text = re.sub(r'（[^）]*）', '', text).strip()
+            # Remove '-' character, can continue to add illegal characters that cause errors
+            text = text.replace('-', '')
+
+            # Add the original text from src_subs_for_audio.srt
+            origin = src_subtitles.get(number, '')
+
+        except ValueError as e:
+            rprint(Panel(f"Unable to parse subtitle block '{block}', error: {str(e)}, skipping this subtitle block.", title="Error", border_style="red"))
+            continue
+        
+        subtitles.append({
+            'number': number,
+            'start_time': start_time,
+            'end_time': end_time,
+            'duration': duration,
+            'text': text,
+            'origin': origin
+        })
+    
+    df = pd.DataFrame(subtitles)
+    
+    i = 0
+    from config import MIN_SUBTITLE_DURATION
+    while i < len(df):
+        if df.loc[i, 'duration'] < MIN_SUBTITLE_DURATION:
+            if i < len(df) - 1 and (datetime.datetime.combine(datetime.date.today(), df.loc[i+1, 'start_time']) - 
+                                    datetime.datetime.combine(datetime.date.today(), df.loc[i, 'start_time'])).total_seconds() < MIN_SUBTITLE_DURATION:
+                rprint(f"[bold yellow]Merging subtitles {i+1} and {i+2}[/bold yellow]")
+                df.loc[i, 'text'] += ' ' + df.loc[i+1, 'text']
+                df.loc[i, 'origin'] += ' ' + df.loc[i+1, 'origin']
+                df.loc[i, 'end_time'] = df.loc[i+1, 'end_time']
+                df.loc[i, 'duration'] = (datetime.datetime.combine(datetime.date.today(), df.loc[i, 'end_time']) - 
+                                        datetime.datetime.combine(datetime.date.today(), df.loc[i, 'start_time'])).total_seconds()
+                df = df.drop(i+1).reset_index(drop=True)
+            else:
+                if i < len(df) - 1:  # Not the last audio
+                    rprint(f"[bold blue]Extending subtitle {i+1} duration to {MIN_SUBTITLE_DURATION} seconds[/bold blue]")
+                    df.loc[i, 'end_time'] = (datetime.datetime.combine(datetime.date.today(), df.loc[i, 'start_time']) + 
+                                            datetime.timedelta(seconds=MIN_SUBTITLE_DURATION)).time()
+                    df.loc[i, 'duration'] = MIN_SUBTITLE_DURATION
+                else:
+                    rprint(f"[bold red]The last subtitle {i+1} duration is less than {MIN_SUBTITLE_DURATION} seconds, but not extending[/bold red]")
+                i += 1
+        else:
+            i += 1
+    
+    df['start_time'] = df['start_time'].apply(lambda x: x.strftime('%H:%M:%S.%f')[:-3])
+    df['end_time'] = df['end_time'].apply(lambda x: x.strftime('%H:%M:%S.%f')[:-3])
+    
+    # check and trim subtitle length, for twice to ensure the subtitle length is within the limit
+    for _ in range(2):
+        df['text'] = df.apply(lambda x: check_len_then_trim(x['text'], x['duration']), axis=1)
+
+    return df
+
+def gen_audio_task_main():
+    output_dir = 'output/audio'
+    tasks_file = os.path.join(output_dir, 'sovits_tasks.xlsx')
+    
+    if os.path.exists(tasks_file):
+        rprint(Panel(f"{tasks_file} already exists, skip.", title="Info", border_style="blue"))
+    else:
+        df = process_srt()
+        console.print(df)
+        df.to_excel(tasks_file, index=False)
+
+        rprint(Panel(f"Successfully generated {tasks_file}", title="Success", border_style="green"))
+
+if __name__ == '__main__':
+    gen_audio_task_main()

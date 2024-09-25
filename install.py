@@ -17,7 +17,6 @@ def main():
     from rich.console import Console
     from rich.table import Table
     from rich.panel import Panel
-    from rich.progress import Progress
 
     console = Console()
     console.print(Panel.fit("Starting installation...", style="bold magenta"))
@@ -117,108 +116,89 @@ def main():
         else:
             print("Failed to download FFmpeg and FFprobe")
 
-    def init_config(api_key, base_url, whisper_method, language, model):
+    def init_config():
         """Initialize the config.py file with the specified API key and base URL."""
         if not os.path.exists("config.py"):
             # Copy config.py from config.example.py
             shutil.copy("config.example.py", "config.py")
             print("config.py file has been created. Please fill in the API key and base URL in the config.py file.")
-
-            # read config.py
-            with open("config.py", "r", encoding="utf-8") as file:
-                config_content = file.read()
-
-            # replace config item
-            config_content = config_content.replace("API_KEY = 'sk-xxx'", f"API_KEY = '{api_key}'")
-            config_content = config_content.replace("BASE_URL = 'https://api.deepbricks.ai'", f"BASE_URL = '{base_url}'")
-            config_content = config_content.replace("WHISPER_METHOD = 'whisperxapi'", f"WHISPER_METHOD = '{whisper_method}'")
-            config_content = config_content.replace("DISPLAY_LANGUAGE = 'auto'", f"DISPLAY_LANGUAGE = '{language}'")
-            config_content = config_content.replace("MODEL = ['claude-3-5-sonnet']", f"MODEL = ['{model}']")
-
-            # write config.py
-            with open("config.py", "w", encoding="utf-8") as file:
-                file.write(config_content)
-
-            print("config.py file update finish.")
         else:
             print("config.py file already exists.")
 
-    def install_whisper_model(choice):
-        if choice == '1':
-            print("Installing whisper_timestamped...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "whisper-timestamped"])
-        elif choice == '2':
-            print("Installing whisperX...")
-            current_dir = os.getcwd()
-            whisperx_dir = os.path.join(current_dir, "third_party", "whisperX")
-            os.chdir(whisperx_dir)
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", "."])
-            os.chdir(current_dir)
-
     # get params from Env
-    api_key = os.getenv('API_KEY', 'xxx')
-    base_url = os.getenv('BASE_URL', 'https://api.deepseek.com')
-    language = os.getenv('DISPLAY_LANGUAGE', 'auto')
-    model = os.getenv('MODEL', 'claude-3-5-sonnet')
     is_docker = os.getenv('IS_DOCKER_RUN', 'false')
 
-    # Whisper_Method
-    whisper_method = os.getenv('WHISPER_METHOD', None)
-
     # Initialize config.py file
-    if whisper_method is None:
-        init_config(api_key, base_url, 'whisperX', language, model)
-    else:
-        init_config(api_key, base_url, whisper_method, language, model)
-
+    init_config()
 
     # Install requests
     console.print(Panel("Installing requests...", style="cyan"))
     install_package("requests")
 
-    if whisper_method is not None:
-        if whisper_method == 'whisper_timestamped':
-            choice = '1'
-        elif whisper_method == 'whisperX':
-            choice = '2'
-        elif whisper_method == 'whisperX_api':
-            choice = '3'
-        else:
-            console.print(f"[red]Error: Invalid WHISPER_METHOD value '{whisper_method}'[/red]")
-            choice = None
+    if is_docker:
+        choice = 2
     else:
         # User selects Whisper model
         table = Table(title="Whisper Model Selection")
         table.add_column("Option", style="cyan", no_wrap=True)
         table.add_column("Model", style="magenta")
         table.add_column("Description", style="green")
-        table.add_row("1", "whisper_timestamped", "")
-        table.add_row("2", "whisperX", "")
-        table.add_row("3", "whisperX_api", "(recommended)")
+        table.add_row("1", "whisperX 💻")
+        table.add_row("2", "whisperXapi ☁️")
         console.print(table)
-        console.print("If you're unsure about the differences between models, please see https://github.com/Huanshere/VideoLingo/blob/main/docs/install_locally_zh.md")
-        choice = console.input("Please enter the option number (1, 2, or 3): ")
 
-    # Install PyTorch
-    if is_docker:  # pytorch already installed by docker, do not need to reinstall
-        console.print(Panel("Running in Docker", style="cyan"))
-    else: # install manual
-        if platform.system() == 'Darwin':  # macOS do not support Nvidia CUDA
-            console.print(Panel("For MacOS, installing CPU version of PyTorch...", style="cyan"))
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "torch", "torchaudio"])
-        else:  # Linux/Windows
-            if choice in ['1', '2']:
-                console.print(Panel("Installing PyTorch with CUDA support...", style="cyan"))
-                subprocess.check_call(["conda", "install", "pytorch==2.0.0", "torchaudio==2.0.0", "pytorch-cuda=11.8", "-c", "pytorch", "-c", "nvidia", "-y"])
-            elif choice == '3':
+        console.print("If you're unsure about the differences between models, please see https://github.com/Huanshere/VideoLingo/")
+        choice = console.input("Please enter the option number (1 or 2): ")
+
+
+    # Install PyTorch and WhisperX
+    if platform.system() == 'Darwin':  # macOS do not support Nvidia CUDA
+        console.print(Panel("For MacOS, installing CPU version of PyTorch...", style="cyan"))
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "torch", "torchaudio"])
+        print("Installing whisperX...")
+        current_dir = os.getcwd()
+        whisperx_dir = os.path.join(current_dir, "third_party", "whisperX")
+        os.chdir(whisperx_dir)
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", "."])
+        os.chdir(current_dir)
+    else:  # Linux/Windows
+        if choice == '1':
+            console.print(Panel("Installing PyTorch with CUDA support...", style="cyan"))
+            subprocess.check_call(["conda", "install", "pytorch==2.0.0", "torchaudio==2.0.0", "pytorch-cuda=11.8", "-c", "pytorch", "-c", "nvidia", "-y"])
+
+            print("Installing whisperX...")
+            current_dir = os.getcwd()
+            whisperx_dir = os.path.join(current_dir, "third_party", "whisperX")
+            os.chdir(whisperx_dir)
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", "."])
+            os.chdir(current_dir)
+        elif choice == '2':
+            table = Table(title="PyTorch Version Selection")
+            table.add_column("Option", style="cyan", no_wrap=True)
+            table.add_column("Version", style="magenta")
+            table.add_column("Description", style="green")
+            table.add_row("1", "CPU", "Choose this if you're using Mac, non-NVIDIA GPU, or don't need GPU acceleration")
+            table.add_row("2", "GPU", "Significantly speeds up UVR5 voice separation. Strongly recommended if you need dubbing functionality and have an NVIDIA GPU.")
+            console.print(table)
+
+            torch_choice = console.input("Please enter the option number (1 for CPU or 2 for GPU): ")
+            if torch_choice == '1':
                 console.print(Panel("Installing CPU version of PyTorch...", style="cyan"))
                 subprocess.check_call([sys.executable, "-m", "pip", "install", "torch", "torchaudio"])
+            elif torch_choice == '2':
+                console.print(Panel("Installing GPU version of PyTorch with CUDA 11.8...", style="cyan"))
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "torch", "torchaudio", "--index-url", "https://download.pytorch.org/whl/cu118"])
+            else:
+                console.print("Invalid choice. Defaulting to CPU version.")
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "torch", "torchaudio"])
+        else:
+            raise ValueError("Invalid choice. Please enter 1 or 2. Try again.")
 
     # Install other dependencies
     install_requirements()
 
-    # Install selected Whisper model
-    install_whisper_model(choice)
+    # Download UVR model
+    dowanload_uvr_model()
 
     # Download and extract FFmpeg
     if not is_docker:  # ffmpeg image already installed by docker, do not need to reinstall

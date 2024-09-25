@@ -19,45 +19,48 @@ def convert_video_to_audio(input_file: str) -> str:
 
     audio_file_with_format = f'{audio_file}.wav'
 
-    ffmpeg_cmd = [
-        'ffmpeg',
-        '-i', input_file,
-        '-vn',
-        '-acodec', 'libmp3lame',
-        '-ar', '16000',
-        '-b:a', '64k',
-        f'{audio_file}.wav'
-    ]
-    try:
-        print(f"🎬➡️🎵 Converting to audio with libmp3lame ......")
-        subprocess.run(ffmpeg_cmd, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        print(f"🎬➡️🎵 Converted <{input_file}> to <{f'{audio_file}.wav'}> with libmp3lame\n")
-        audio_file_with_format = f'{audio_file}.wav'
-
-    except subprocess.CalledProcessError as e:
-        print("❌ libmp3lame failed. Retrying with aac ......")
-        print(f"Error output: {e.stderr.decode()}")
-
-        # 有时候会遇到ffmpeg不含libmp3lame解码器的错误，使用内置 flac无损编码 兜底进行音频转换的 fallback ffmpeg 命令
+    if not os.path.exists(f'{audio_file}.wav'):
         ffmpeg_cmd = [
             'ffmpeg',
+            '-y', # 默认覆盖已有文件
             '-i', input_file,
             '-vn',
-            '-acodec', 'flac',
+            '-acodec', 'libmp3lame',
             '-ar', '16000',
             '-b:a', '64k',
-            f'{audio_file}.flac'
+            f'{audio_file}.wav'
         ]
-
         try:
+            print(f"🎬➡️🎵 Converting to audio with libmp3lame ......")
             subprocess.run(ffmpeg_cmd, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            print(f"🎬➡️🎵 Converted <{input_file}> to <{f'{audio_file}.flac'}> with aac\n")
-            audio_file_with_format = f'{audio_file}.flac'
+            print(f"🎬➡️🎵 Converted <{input_file}> to <{f'{audio_file}.wav'}> with libmp3lame\n")
+            audio_file_with_format = f'{audio_file}.wav'
 
         except subprocess.CalledProcessError as e:
-            print(f"❌ Failed to convert <{input_file}> to <{f'{audio_file}.flac'}> with both libmp3lame and aac.")
             print(f"Error output: {e.stderr.decode()}")
-            raise
+            print("❌ libmp3lame failed. Retrying with aac ......")
+
+            # 有时候会遇到ffmpeg不含libmp3lame解码器的错误，使用内置 flac无损编码 兜底进行音频转换的 fallback ffmpeg 命令
+            ffmpeg_cmd = [
+                'ffmpeg',
+                '-y', # 默认覆盖已有文件
+                '-i', input_file,
+                '-vn',
+                '-acodec', 'flac',
+                '-ar', '16000',
+                '-b:a', '64k',
+                f'{audio_file}.flac'
+            ]
+
+            try:
+                subprocess.run(ffmpeg_cmd, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+                print(f"🎬➡️🎵 Converted <{input_file}> to <{f'{audio_file}.flac'}> with aac\n")
+                audio_file_with_format = f'{audio_file}.flac'
+
+            except subprocess.CalledProcessError as e:
+                print(f"❌ Failed to convert <{input_file}> to <{f'{audio_file}.flac'}> with both libmp3lame and aac.")
+                print(f"Error output: {e.stderr.decode()}")
+                raise
 
     return audio_file_with_format
 
@@ -79,6 +82,7 @@ def split_audio(audio_file: str, target_duration: int = 20*60, window: int = 60)
         
         ffmpeg_cmd = [
             'ffmpeg',
+            '-y',
             '-i', audio_file,
             '-ss', str(window_start),
             '-to', str(window_end),
@@ -105,22 +109,40 @@ def split_audio(audio_file: str, target_duration: int = 20*60, window: int = 60)
         start += target_duration
     
     print(f"🔪 Split audio into {len(segments)} segments")
+    #! Occasionally, the process may pause here. Warning the user to skip the pause.
+    print(f"!!! YOU SHOULD SEE [🚀 Starting WhisperX API...] in the next step in 3 secs, otherwise hit ENTER to skip the pause.")
     return segments
 
+import time
 def transcribe_segment(audio_file: str, start: float, end: float) -> Dict:
     print(f"🎙️ Transcribing segment from {start:.2f}s to {end:.2f}s")
     
     segment_file = f'output/audio/segment_{start:.2f}_{end:.2f}.wav'
     ffmpeg_cmd = [
         'ffmpeg',
+        '-y',
         '-i', audio_file,
         '-ss', str(start),
         '-to', str(end),
         '-c', 'copy',
         segment_file
     ]
-    subprocess.run(ffmpeg_cmd, check=True, stderr=subprocess.PIPE)
+
+    try:
+        # Run ffmpeg command with timeout
+        subprocess.run(ffmpeg_cmd, check=True, stderr=subprocess.PIPE, timeout=300)
+    except subprocess.TimeoutExpired:
+        print("⚠️ ffmpeg command timed out, retrying...")
+        # If timeout occurs, try with a different encoding method
+        ffmpeg_cmd[6] = 'pcm_s16le'
+        subprocess.run(ffmpeg_cmd, check=True, stderr=subprocess.PIPE)
     
+    # Short wait to ensure file is written
+    time.sleep(1)
+
+    if not os.path.exists(segment_file):
+        raise FileNotFoundError(f"Failed to create segment file: {segment_file}")
+
     # Encode to base64
     with open(segment_file, 'rb') as file:
         audio_base64 = base64.b64encode(file.read()).decode('utf-8')
@@ -129,9 +151,10 @@ def transcribe_segment(audio_file: str, start: float, end: float) -> Dict:
     segment_size = len(audio_base64) / (1024 * 1024)  # Size in MB
     print(f"📊 Segment size: {segment_size:.2f} MB")
 
+    print("🚀 Starting WhisperX API...")
     result = transcribe_audio(audio_base64)
     
-    # delete the segment file
+    # Delete segment file
     os.remove(segment_file)
     
     return result
