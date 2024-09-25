@@ -125,8 +125,11 @@ def main():
         else:
             print("config.py file already exists.")
 
-    # get params from Env
+    # get is_docker from Env
     is_docker = os.getenv('IS_DOCKER_RUN', 'false')
+    if is_docker:
+        console.print(Panel("For Docker deploy, you DO NOT NEED TO INSTALL AnyThing", style="cyan"))
+        return
 
     # Initialize config.py file
     init_config()
@@ -135,32 +138,29 @@ def main():
     console.print(Panel("Installing requests...", style="cyan"))
     install_package("requests")
 
-    if is_docker:
-        choice = 2
-    else:
-        # User selects Whisper model
-        table = Table(title="Whisper Model Selection")
-        table.add_column("Option", style="cyan", no_wrap=True)
-        table.add_column("Model", style="magenta")
-        table.add_column("Description", style="green")
-        table.add_row("1", "whisperX 💻")
-        table.add_row("2", "whisperXapi ☁️")
-        console.print(table)
+    # User selects Whisper model
+    table = Table(title="Whisper Model Selection")
+    table.add_column("Option", style="cyan", no_wrap=True)
+    table.add_column("Model", style="magenta")
+    table.add_column("Description", style="green")
+    table.add_row("1", "whisperX 💻")
+    table.add_row("2", "whisperXapi ☁️")
+    console.print(table)
 
-        console.print("If you're unsure about the differences between models, please see https://github.com/Huanshere/VideoLingo/")
-        choice = console.input("Please enter the option number (1 or 2): ")
-
+    console.print("If you're unsure about the differences between models, please see https://github.com/Huanshere/VideoLingo/")
+    choice = console.input("Please enter the option number (1 or 2): ")
 
     # Install PyTorch and WhisperX
     if platform.system() == 'Darwin':  # macOS do not support Nvidia CUDA
         console.print(Panel("For MacOS, installing CPU version of PyTorch...", style="cyan"))
         subprocess.check_call([sys.executable, "-m", "pip", "install", "torch", "torchaudio"])
-        print("Installing whisperX...")
-        current_dir = os.getcwd()
-        whisperx_dir = os.path.join(current_dir, "third_party", "whisperX")
-        os.chdir(whisperx_dir)
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", "."])
-        os.chdir(current_dir)
+        if choice == '1':
+            print("Installing whisperX...")
+            current_dir = os.getcwd()
+            whisperx_dir = os.path.join(current_dir, "third_party", "whisperX")
+            os.chdir(whisperx_dir)
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", "."])
+            os.chdir(current_dir)
     else:  # Linux/Windows
         if choice == '1':
             console.print(Panel("Installing PyTorch with CUDA support...", style="cyan"))
@@ -201,8 +201,7 @@ def main():
     dowanload_uvr_model()
 
     # Download and extract FFmpeg
-    if not is_docker:  # ffmpeg image already installed by docker, do not need to reinstall
-        download_and_extract_ffmpeg()
+    download_and_extract_ffmpeg()
     
     console.print(Panel.fit("All installation steps are completed!", style="bold green"))
     console.print("Please use the following command to start Streamlit:")

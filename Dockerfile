@@ -15,7 +15,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     cmake \
     build-essential \
-    ffmpeg && \
+    ffmpeg \
+    wget && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -25,6 +26,11 @@ RUN pip install --upgrade pip
 # 拷贝 requirements.txt 并安装依赖
 COPY requirements.txt .
 RUN pip install -r requirements.txt
+
+# 下载 UVR 模型
+RUN mkdir -p _model_cache/uvr5_weights && \
+    apt-get install -y wget && \
+    wget -O _model_cache/uvr5_weights/HP2_all_vocals.pth https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/e992cb1bc5d777fcddce20735a899219b1d46aba/uvr5_weights/HP2_all_vocals.pth
 
 # 第四步：应用镜像
 FROM dependencies AS app
