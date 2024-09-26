@@ -17,20 +17,40 @@ TRANS_OUTLINE_COLOR = '&H000000'
 TRANS_OUTLINE_WIDTH = 1 
 TRANS_BACK_COLOR = '&H33000000'
 
+def get_video_resolution(video_file):
+    # 使用 ffprobe 获取视频的宽和高
+    cmd = [
+        'ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries',
+        'stream=width,height', '-of', 'csv=p=0:s=x', video_file
+    ]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    return result.stdout.strip().split('x')
+
 def merge_subtitles_to_video():
-    from config import RESOLUTION
-    TARGET_WIDTH, TARGET_HEIGHT = RESOLUTION.split('x')
     video_file = find_video_files()
     output_video = "output/output_video_with_subs.mp4"
     os.makedirs(os.path.dirname(output_video), exist_ok=True)
 
+    # 获取视频文件的分辨率
+    target_width, target_height = get_video_resolution(video_file)
+    print("width: "+ target_width + "height: " + target_height)
+    
     # Check resolution and video duration
-    if RESOLUTION == "0x0":
+    if target_width == "0" or target_height == "0":
         rprint(Panel("Warning: A 0-second black video will be generated as a placeholder as Resolution is set to 0x0.", title="Warning", border_style="yellow"))
         # Suppress detailed output of ffmpeg command
-        subprocess.run(['ffmpeg', '-f', 'lavfi', '-i', 'color=c=black:s=1920x1080:d=0',
-                        '-c:v', 'libx264', '-t', '0', '-preset', 'ultrafast', '-y', output_video],
-                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        # 确定是否是macOS
+        macOS = os.name == 'posix' and os.uname().sysname == 'Darwin'
+
+        if macOS :
+            subprocess.run(['ffmpeg', '-f', 'lavfi', '-i', 'color=c=black:s=1920x1080:d=0',
+                            '-c:v', 'libx264', '-t', '0', '-y', output_video],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.run(['ffmpeg', '-f', 'lavfi', '-i', 'color=c=black:s=1920x1080:d=0',
+                            '-c:v', 'libx264', '-t', '0', '-preset', 'ultrafast', '-y', output_video],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print("Placeholder video has been generated.")
         return
 
@@ -47,8 +67,8 @@ def merge_subtitles_to_video():
     ffmpeg_cmd = [
         'ffmpeg', '-i', video_file,
         '-vf', (
-            f"scale={TARGET_WIDTH}:{TARGET_HEIGHT}:force_original_aspect_ratio=decrease,"
-            f"pad={TARGET_WIDTH}:{TARGET_HEIGHT}:(ow-iw)/2:(oh-ih)/2,"
+            f"scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,"
+            f"pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2,"
             f"subtitles={en_srt}:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_NAME}," 
             f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
             f"ShadowColour={SRC_SHADOW_COLOR},BorderStyle=1',"

@@ -125,12 +125,6 @@ def main():
         else:
             print("config.py file already exists.")
 
-    # get is_docker from Env
-    is_docker = os.getenv('IS_DOCKER_RUN', 'false')
-    if is_docker:
-        console.print(Panel("For Docker deploy, you DO NOT NEED TO INSTALL AnyThing", style="cyan"))
-        return
-
     # Initialize config.py file
     init_config()
 
