@@ -3,11 +3,18 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.step1_ytdlp import find_video_files
 from rich import print as rprint
 from rich.panel import Panel
+import platform
 
 SRC_FONT_SIZE = 15
 TRANS_FONT_SIZE = 19
 FONT_NAME = 'Arial'
 TRANS_FONT_NAME = 'Arial'
+
+# Linux出现中文乱码问题，需要安装google noto字体：apt-get install fonts-noto
+if platform.system() == 'Linux':
+    FONT_NAME = 'NotoSansCJK-Regular'
+    TRANS_FONT_NAME = 'NotoSansCJK-Regular'
+
 SRC_FONT_COLOR = '&HFFFFFF' 
 SRC_OUTLINE_COLOR = '&H000000'
 SRC_OUTLINE_WIDTH = 1

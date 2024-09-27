@@ -15,6 +15,7 @@ RUN apt-get update && \
     apt-get install -y  \
     autoconf \
     automake \
+    fonts-noto \
     build-essential \
     cmake \
     git \
