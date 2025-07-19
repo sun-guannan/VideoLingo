@@ -188,7 +188,8 @@ def page_setting():
                     
                     # 克隆CapCutAPI仓库
                     log_container.info(t("Cloning CapCutAPI repository..."))
-                    subprocess.check_call(["git", "clone", "https://github.com/sun-guannan/CapCutAPI.git", "core/capcut_api"])
+                    subprocess.check_call(["git", "clone", "--depth=1", "https://github.com/sun-guannan/CapCutAPI.git", "core/capcut_api"])
+
                     
                     # 安装依赖
                     log_container.info(t("Installing dependencies..."))
