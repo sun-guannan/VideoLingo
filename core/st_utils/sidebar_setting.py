@@ -295,252 +295,252 @@ def page_setting():
                 # 创建三个横向排布的tab
                 orig_tab, trans_tab, dub_tab = st.tabs([t("Original Text"), t("Translated Text"), t("Dubbed Text")])
             
-            # 1. 原始文本设置
-            with orig_tab:
-                # 原始文本字体
-                selected_orig_font = st.selectbox(
-                    t("Font"),
-                    options=font_options,
-                    index=font_options.index(load_key("capcut.orig_text.font")) if load_key("capcut.orig_text.font") in font_options else 0,
-                    key="orig_font"
-                )
-                if selected_orig_font != load_key("capcut.orig_text.font"):
-                    update_key("capcut.orig_text.font", selected_orig_font)
-                    st.rerun()
-                
-                # 原始文本字体大小
-                orig_font_size = st.slider(
-                    t("Font Size"),
-                    min_value=1,
-                    max_value=100,
-                    value=int(load_key("capcut.orig_text.font_size")) if load_key("capcut.orig_text.font_size") else 36,
-                    key="orig_font_size"
-                )
-                if orig_font_size != load_key("capcut.orig_text.font_size"):
-                    update_key("capcut.orig_text.font_size", orig_font_size)
-                    st.rerun()
-                
-                # 原始文本字体颜色
-                orig_font_color = st.color_picker(
-                    t("Font Color"),
-                    value=load_key("capcut.orig_text.color") if load_key("capcut.orig_text.color") else "#FFCC00",
-                    key="orig_font_color"
-                )
-                if orig_font_color != load_key("capcut.orig_text.color"):
-                    update_key("capcut.orig_text.color", orig_font_color)
-                    st.rerun()
-                
-                # Y方向位置移动（原始文本独立控制）
-                orig_y_offset = st.slider(
-                    t("Vertical Position Offset"),
-                    min_value=-2.0,
-                    max_value=2.0,
-                    value=float(load_key("capcut.orig_text.y_offset")) if load_key("capcut.orig_text.y_offset") is not None else 0.0,
-                    step=0.1,
-                    key="orig_y_offset",
-                    help=t("Positive values move upward, 1 represents one video height")
-                )
-                if orig_y_offset != load_key("capcut.orig_text.y_offset"):
-                    update_key("capcut.orig_text.y_offset", orig_y_offset)
-                    st.rerun()
-                
-                # 描边设置
-                orig_stroke = st.toggle(
-                    t("Stroke"),
-                    value=load_key("capcut.orig_text.stroke") if load_key("capcut.orig_text.stroke") is not None else True,
-                    key="orig_stroke"
-                )
-                if orig_stroke != load_key("capcut.orig_text.stroke"):
-                    update_key("capcut.orig_text.stroke", orig_stroke)
-                    st.rerun()
-                
-                if orig_stroke:
-                    # 原始文本描边颜色
-                    orig_stroke_color = st.color_picker(
-                        t("Stroke Color"),
-                        value=load_key("capcut.orig_text.stroke_color") if load_key("capcut.orig_text.stroke_color") else "#000000",
-                        key="orig_stroke_color"
+                # 1. 原始文本设置
+                with orig_tab:
+                    # 原始文本字体
+                    selected_orig_font = st.selectbox(
+                        t("Font"),
+                        options=font_options,
+                        index=font_options.index(load_key("capcut.orig_text.font")) if load_key("capcut.orig_text.font") in font_options else 0,
+                        key="orig_font"
                     )
-                    if orig_stroke_color != load_key("capcut.orig_text.stroke_color"):
-                        update_key("capcut.orig_text.stroke_color", orig_stroke_color)
+                    if selected_orig_font != load_key("capcut.orig_text.font"):
+                        update_key("capcut.orig_text.font", selected_orig_font)
                         st.rerun()
-                        
-                    # 原始文本描边粗细
-                    orig_stroke_width = st.slider(
-                        t("Stroke Width"),
-                        min_value=0,
+                    
+                    # 原始文本字体大小
+                    orig_font_size = st.slider(
+                        t("Font Size"),
+                        min_value=1,
                         max_value=100,
-                        value=int(load_key("capcut.orig_text.stroke_width")) if load_key("capcut.orig_text.stroke_width") else 30,
-                        key="orig_stroke_width"
+                        value=int(load_key("capcut.orig_text.font_size")) if load_key("capcut.orig_text.font_size") else 36,
+                        key="orig_font_size"
                     )
-                    if orig_stroke_width != load_key("capcut.orig_text.stroke_width"):
-                        update_key("capcut.orig_text.stroke_width", orig_stroke_width)
+                    if orig_font_size != load_key("capcut.orig_text.font_size"):
+                        update_key("capcut.orig_text.font_size", orig_font_size)
                         st.rerun()
+                    
+                    # 原始文本字体颜色
+                    orig_font_color = st.color_picker(
+                        t("Font Color"),
+                        value=load_key("capcut.orig_text.color") if load_key("capcut.orig_text.color") else "#FFCC00",
+                        key="orig_font_color"
+                    )
+                    if orig_font_color != load_key("capcut.orig_text.color"):
+                        update_key("capcut.orig_text.color", orig_font_color)
+                        st.rerun()
+                    
+                    # Y方向位置移动（原始文本独立控制）
+                    orig_y_offset = st.slider(
+                        t("Vertical Position Offset"),
+                        min_value=-2.0,
+                        max_value=2.0,
+                        value=float(load_key("capcut.orig_text.y_offset")) if load_key("capcut.orig_text.y_offset") is not None else 0.0,
+                        step=0.1,
+                        key="orig_y_offset",
+                        help=t("Positive values move upward, 1 represents one video height")
+                    )
+                    if orig_y_offset != load_key("capcut.orig_text.y_offset"):
+                        update_key("capcut.orig_text.y_offset", orig_y_offset)
+                        st.rerun()
+                    
+                    # 描边设置
+                    orig_stroke = st.toggle(
+                        t("Stroke"),
+                        value=load_key("capcut.orig_text.stroke") if load_key("capcut.orig_text.stroke") is not None else True,
+                        key="orig_stroke"
+                    )
+                    if orig_stroke != load_key("capcut.orig_text.stroke"):
+                        update_key("capcut.orig_text.stroke", orig_stroke)
+                        st.rerun()
+                    
+                    if orig_stroke:
+                        # 原始文本描边颜色
+                        orig_stroke_color = st.color_picker(
+                            t("Stroke Color"),
+                            value=load_key("capcut.orig_text.stroke_color") if load_key("capcut.orig_text.stroke_color") else "#000000",
+                            key="orig_stroke_color"
+                        )
+                        if orig_stroke_color != load_key("capcut.orig_text.stroke_color"):
+                            update_key("capcut.orig_text.stroke_color", orig_stroke_color)
+                            st.rerun()
+                            
+                        # 原始文本描边粗细
+                        orig_stroke_width = st.slider(
+                            t("Stroke Width"),
+                            min_value=0,
+                            max_value=100,
+                            value=int(load_key("capcut.orig_text.stroke_width")) if load_key("capcut.orig_text.stroke_width") else 30,
+                            key="orig_stroke_width"
+                        )
+                        if orig_stroke_width != load_key("capcut.orig_text.stroke_width"):
+                            update_key("capcut.orig_text.stroke_width", orig_stroke_width)
+                            st.rerun()
+                
+                # 2. 翻译文本设置
+                with trans_tab:
+                    # 翻译文本字体
+                    selected_trans_font = st.selectbox(
+                        t("Font"),
+                        options=font_options,
+                        index=font_options.index(load_key("capcut.trans_text.font")) if load_key("capcut.trans_text.font") in font_options else 0,
+                        key="trans_font"
+                    )
+                    if selected_trans_font != load_key("capcut.trans_text.font"):
+                        update_key("capcut.trans_text.font", selected_trans_font)
+                        st.rerun()
+                    
+                    # 翻译文本字体大小
+                    trans_font_size = st.slider(
+                        t("Font Size"),
+                        min_value=1,
+                        max_value=100,
+                        value=int(load_key("capcut.trans_text.font_size")) if load_key("capcut.trans_text.font_size") else 36,
+                        key="trans_font_size"
+                    )
+                    if trans_font_size != load_key("capcut.trans_text.font_size"):
+                        update_key("capcut.trans_text.font_size", trans_font_size)
+                        st.rerun()
+                    
+                    # 翻译文本字体颜色
+                    trans_font_color = st.color_picker(
+                        t("Font Color"),
+                        value=load_key("capcut.trans_text.color") if load_key("capcut.trans_text.color") else "#FFFFFF",
+                        key="trans_font_color"
+                    )
+                    if trans_font_color != load_key("capcut.trans_text.color"):
+                        update_key("capcut.trans_text.color", trans_font_color)
+                        st.rerun()
+                    
+                    # Y方向位置移动（翻译文本独立控制）
+                    trans_y_offset = st.slider(
+                        t("Vertical Position Offset"),
+                        min_value=-2.0,
+                        max_value=2.0,
+                        value=float(load_key("capcut.trans_text.y_offset")) if load_key("capcut.trans_text.y_offset") is not None else 0.0,
+                        step=0.1,
+                        key="trans_y_offset",
+                        help=t("Positive values move upward, 1 represents one video height")
+                    )
+                    if trans_y_offset != load_key("capcut.trans_text.y_offset"):
+                        update_key("capcut.trans_text.y_offset", trans_y_offset)
+                        st.rerun()
+                    
+                    # 描边设置
+                    trans_stroke = st.toggle(
+                        t("Stroke"),
+                        value=load_key("capcut.trans_text.stroke") if load_key("capcut.trans_text.stroke") is not None else True,
+                        key="trans_stroke"
+                    )
+                    if trans_stroke != load_key("capcut.trans_text.stroke"):
+                        update_key("capcut.trans_text.stroke", trans_stroke)
+                        st.rerun()
+                    
+                    if trans_stroke:
+                        # 翻译文本描边颜色
+                        trans_stroke_color = st.color_picker(
+                            t("Stroke Color"),
+                            value=load_key("capcut.trans_text.stroke_color") if load_key("capcut.trans_text.stroke_color") else "#000000",
+                            key="trans_stroke_color"
+                        )
+                        if trans_stroke_color != load_key("capcut.trans_text.stroke_color"):
+                            update_key("capcut.trans_text.stroke_color", trans_stroke_color)
+                            st.rerun()
+                            
+                        # 翻译文本描边粗细
+                        trans_stroke_width = st.slider(
+                            t("Stroke Width"),
+                            min_value=0,
+                            max_value=100,
+                            value=int(load_key("capcut.trans_text.stroke_width")) if load_key("capcut.trans_text.stroke_width") else 30,
+                            key="trans_stroke_width"
+                        )
+                        if trans_stroke_width != load_key("capcut.trans_text.stroke_width"):
+                            update_key("capcut.trans_text.stroke_width", trans_stroke_width)
+                            st.rerun()
+                
+                # 3. 配音文本设置
+                with dub_tab:
+                    # 配音文本字体
+                    selected_dub_font = st.selectbox(
+                        t("Font"),
+                        options=font_options,
+                        index=font_options.index(load_key("capcut.dub_text.font")) if load_key("capcut.dub_text.font") in font_options else 0,
+                        key="dub_font"
+                    )
+                    if selected_dub_font != load_key("capcut.dub_text.font"):
+                        update_key("capcut.dub_text.font", selected_dub_font)
+                        st.rerun()
+                    
+                    # 配音文本字体大小
+                    dub_font_size = st.slider(
+                        t("Font Size"),
+                        min_value=1,
+                        max_value=100,
+                        value=int(load_key("capcut.dub_text.font_size")) if load_key("capcut.dub_text.font_size") else 8,
+                        key="dub_font_size"
+                    )
+                    if dub_font_size != load_key("capcut.dub_text.font_size"):
+                        update_key("capcut.dub_text.font_size", dub_font_size)
+                        st.rerun()
+                    
+                    # 配音文本字体颜色
+                    dub_font_color = st.color_picker(
+                        t("Font Color"),
+                        value=load_key("capcut.dub_text.color") if load_key("capcut.dub_text.color") else "#FFFFFF",
+                        key="dub_font_color"
+                    )
+                    if dub_font_color != load_key("capcut.dub_text.color"):
+                        update_key("capcut.dub_text.color", dub_font_color)
+                        st.rerun()
+                    
+                    # Y方向位置移动（配音文本独立控制）
+                    dub_y_offset = st.slider(
+                        t("Vertical Position Offset"),
+                        min_value=-3.0,
+                        max_value=3.0,
+                        value=float(load_key("capcut.dub_text.y_offset")) if load_key("capcut.dub_text.y_offset") is not None else 0.0,
+                        step=0.1,
+                        key="dub_y_offset",
+                        help=t("Positive values move upward, 1 represents one video height")
+                    )
+                    if dub_y_offset != load_key("capcut.dub_text.y_offset"):
+                        update_key("capcut.dub_text.y_offset", dub_y_offset)
+                        st.rerun()
+                    
+                    # 描边设置
+                    dub_stroke = st.toggle(
+                        t("Stroke"),
+                        value=load_key("capcut.dub_text.stroke") if load_key("capcut.dub_text.stroke") is not None else True,
+                        key="dub_stroke"
+                    )
+                    if dub_stroke != load_key("capcut.dub_text.stroke"):
+                        update_key("capcut.dub_text.stroke", dub_stroke)
+                        st.rerun()
+                    
+                    if dub_stroke:
+                        # 配音文本描边颜色
+                        dub_stroke_color = st.color_picker(
+                            t("Stroke Color"),
+                            value=load_key("capcut.dub_text.stroke_color") if load_key("capcut.dub_text.stroke_color") else "#000000",
+                            key="dub_stroke_color"
+                        )
+                        if dub_stroke_color != load_key("capcut.dub_text.stroke_color"):
+                            update_key("capcut.dub_text.stroke_color", dub_stroke_color)
+                            st.rerun()
+                            
+                        # 配音文本描边粗细
+                        dub_stroke_width = st.slider(
+                            t("Stroke Width"),
+                            min_value=0,
+                            max_value=100,
+                            value=int(load_key("capcut.dub_text.stroke_width")) if load_key("capcut.dub_text.stroke_width") else 40,
+                            key="dub_stroke_width"
+                        )
+                        if dub_stroke_width != load_key("capcut.dub_text.stroke_width"):
+                            update_key("capcut.dub_text.stroke_width", dub_stroke_width)
+                            st.rerun()
             
-            # 2. 翻译文本设置
-            with trans_tab:
-                # 翻译文本字体
-                selected_trans_font = st.selectbox(
-                    t("Font"),
-                    options=font_options,
-                    index=font_options.index(load_key("capcut.trans_text.font")) if load_key("capcut.trans_text.font") in font_options else 0,
-                    key="trans_font"
-                )
-                if selected_trans_font != load_key("capcut.trans_text.font"):
-                    update_key("capcut.trans_text.font", selected_trans_font)
-                    st.rerun()
-                
-                # 翻译文本字体大小
-                trans_font_size = st.slider(
-                    t("Font Size"),
-                    min_value=1,
-                    max_value=100,
-                    value=int(load_key("capcut.trans_text.font_size")) if load_key("capcut.trans_text.font_size") else 36,
-                    key="trans_font_size"
-                )
-                if trans_font_size != load_key("capcut.trans_text.font_size"):
-                    update_key("capcut.trans_text.font_size", trans_font_size)
-                    st.rerun()
-                
-                # 翻译文本字体颜色
-                trans_font_color = st.color_picker(
-                    t("Font Color"),
-                    value=load_key("capcut.trans_text.color") if load_key("capcut.trans_text.color") else "#FFFFFF",
-                    key="trans_font_color"
-                )
-                if trans_font_color != load_key("capcut.trans_text.color"):
-                    update_key("capcut.trans_text.color", trans_font_color)
-                    st.rerun()
-                
-                # Y方向位置移动（翻译文本独立控制）
-                trans_y_offset = st.slider(
-                    t("Vertical Position Offset"),
-                    min_value=-2.0,
-                    max_value=2.0,
-                    value=float(load_key("capcut.trans_text.y_offset")) if load_key("capcut.trans_text.y_offset") is not None else 0.0,
-                    step=0.1,
-                    key="trans_y_offset",
-                    help=t("Positive values move upward, 1 represents one video height")
-                )
-                if trans_y_offset != load_key("capcut.trans_text.y_offset"):
-                    update_key("capcut.trans_text.y_offset", trans_y_offset)
-                    st.rerun()
-                
-                # 描边设置
-                trans_stroke = st.toggle(
-                    t("Stroke"),
-                    value=load_key("capcut.trans_text.stroke") if load_key("capcut.trans_text.stroke") is not None else True,
-                    key="trans_stroke"
-                )
-                if trans_stroke != load_key("capcut.trans_text.stroke"):
-                    update_key("capcut.trans_text.stroke", trans_stroke)
-                    st.rerun()
-                
-                if trans_stroke:
-                    # 翻译文本描边颜色
-                    trans_stroke_color = st.color_picker(
-                        t("Stroke Color"),
-                        value=load_key("capcut.trans_text.stroke_color") if load_key("capcut.trans_text.stroke_color") else "#000000",
-                        key="trans_stroke_color"
-                    )
-                    if trans_stroke_color != load_key("capcut.trans_text.stroke_color"):
-                        update_key("capcut.trans_text.stroke_color", trans_stroke_color)
-                        st.rerun()
-                        
-                    # 翻译文本描边粗细
-                    trans_stroke_width = st.slider(
-                        t("Stroke Width"),
-                        min_value=0,
-                        max_value=100,
-                        value=int(load_key("capcut.trans_text.stroke_width")) if load_key("capcut.trans_text.stroke_width") else 30,
-                        key="trans_stroke_width"
-                    )
-                    if trans_stroke_width != load_key("capcut.trans_text.stroke_width"):
-                        update_key("capcut.trans_text.stroke_width", trans_stroke_width)
-                        st.rerun()
-            
-            # 3. 配音文本设置
-            with dub_tab:
-                # 配音文本字体
-                selected_dub_font = st.selectbox(
-                    t("Font"),
-                    options=font_options,
-                    index=font_options.index(load_key("capcut.dub_text.font")) if load_key("capcut.dub_text.font") in font_options else 0,
-                    key="dub_font"
-                )
-                if selected_dub_font != load_key("capcut.dub_text.font"):
-                    update_key("capcut.dub_text.font", selected_dub_font)
-                    st.rerun()
-                
-                # 配音文本字体大小
-                dub_font_size = st.slider(
-                    t("Font Size"),
-                    min_value=1,
-                    max_value=100,
-                    value=int(load_key("capcut.dub_text.font_size")) if load_key("capcut.dub_text.font_size") else 8,
-                    key="dub_font_size"
-                )
-                if dub_font_size != load_key("capcut.dub_text.font_size"):
-                    update_key("capcut.dub_text.font_size", dub_font_size)
-                    st.rerun()
-                
-                # 配音文本字体颜色
-                dub_font_color = st.color_picker(
-                    t("Font Color"),
-                    value=load_key("capcut.dub_text.color") if load_key("capcut.dub_text.color") else "#FFFFFF",
-                    key="dub_font_color"
-                )
-                if dub_font_color != load_key("capcut.dub_text.color"):
-                    update_key("capcut.dub_text.color", dub_font_color)
-                    st.rerun()
-                
-                # Y方向位置移动（配音文本独立控制）
-                dub_y_offset = st.slider(
-                    t("Vertical Position Offset"),
-                    min_value=-3.0,
-                    max_value=3.0,
-                    value=float(load_key("capcut.dub_text.y_offset")) if load_key("capcut.dub_text.y_offset") is not None else 0.0,
-                    step=0.1,
-                    key="dub_y_offset",
-                    help=t("Positive values move upward, 1 represents one video height")
-                )
-                if dub_y_offset != load_key("capcut.dub_text.y_offset"):
-                    update_key("capcut.dub_text.y_offset", dub_y_offset)
-                    st.rerun()
-                
-                # 描边设置
-                dub_stroke = st.toggle(
-                    t("Stroke"),
-                    value=load_key("capcut.dub_text.stroke") if load_key("capcut.dub_text.stroke") is not None else True,
-                    key="dub_stroke"
-                )
-                if dub_stroke != load_key("capcut.dub_text.stroke"):
-                    update_key("capcut.dub_text.stroke", dub_stroke)
-                    st.rerun()
-                
-                if dub_stroke:
-                    # 配音文本描边颜色
-                    dub_stroke_color = st.color_picker(
-                        t("Stroke Color"),
-                        value=load_key("capcut.dub_text.stroke_color") if load_key("capcut.dub_text.stroke_color") else "#000000",
-                        key="dub_stroke_color"
-                    )
-                    if dub_stroke_color != load_key("capcut.dub_text.stroke_color"):
-                        update_key("capcut.dub_text.stroke_color", dub_stroke_color)
-                        st.rerun()
-                        
-                    # 配音文本描边粗细
-                    dub_stroke_width = st.slider(
-                        t("Stroke Width"),
-                        min_value=0,
-                        max_value=100,
-                        value=int(load_key("capcut.dub_text.stroke_width")) if load_key("capcut.dub_text.stroke_width") else 40,
-                        key="dub_stroke_width"
-                    )
-                    if dub_stroke_width != load_key("capcut.dub_text.stroke_width"):
-                        update_key("capcut.dub_text.stroke_width", dub_stroke_width)
-                        st.rerun()
-        
 def check_api():
     try:
         resp = ask_gpt("This is a test, response 'message':'success' in json format.", 
